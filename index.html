@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Sesiones de Intervención Psicopedagógica</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Intervención Psicopedagógica</h1>
+        
+        <!-- Formulario de Entrada -->
+        <div id="entryForm" class="form-section">
+            <h2>Datos de la Sesión</h2>
+            <form id="sessionForm">
+                <div class="form-group">
+                    <label for="therapeuticApproach">Enfoque Terapéutico:</label>
+                    <select id="therapeuticApproach" required>
+                        <option value="">Seleccione un enfoque</option>
+                        <option value="cognitivo">Cognitivo Conductual</option>
+                        <option value="constructivista">Constructivista</option>
+                        <option value="sistemico">Sistémico</option>
+                        <option value="humanista">Humanista</option>
+                        <option value="psicodinamico">Psicodinámico</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="studentName">Nombre del Estudiante:</label>
+                    <input type="text" id="studentName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentColege">Carrera Profesional:</label>
+                    <input type="text" id="studentColege" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="studentAge">Edad:</label>
+                    <input type="number" id="studentAge" min="14" max="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sessionDate">Fecha de la Sesión:</label>
+                    <input type="date" id="sessionDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sessionNumber">Número de Sesión:</label>
+                    <input type="number" id="sessionNumber" min="1" max="3" required>
+                </div>
+                
+                <div id="sessionSpecificInputs"></div>
+                
+                <button type="submit">Iniciar Intervención</button>
+            </form>
+        </div>
+        
+        <div id="loading" class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Generando sesión...</p>
+        </div>
+        
+        <!-- Contenedor de Resultados -->
+        <div id="resultContainer" class="result-section">
+            <!-- Los resultados de la sesión se mostrarán aquí -->
+        </div>
+        
+        <div id="exportSection" style="display: none;">
+            <button id="exportPDFButton">Exportar a PDF</button>
+            <button id="exportWordButton">Exportar a Word</button>
+        </div>
+    </div>
+    <script type="importmap">
+        {
+          "imports": {
+            "@google/generative-ai": "https://esm.run/@google/generative-ai"
+          }
+        }
+    </script>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+        document.getElementById('exportPDFButton').addEventListener('click', () => {
+            const resultContainer = document.getElementById('resultContainer');
+            if (!resultContainer.innerHTML.trim()) {
+                alert('No hay contenido para exportar. Por favor, genera una sesión primero.');
+                return;
+            }
+        });
+        // Mapeo de enfoques terapéuticos
+        const therapeuticApproaches = {
+            'cognitivo': 'Cognitivo Conductual',
+            'constructivista': 'Constructivista',
+            'sistemico': 'Sistémico',
+            'humanista': 'Humanista',
+            'psicodinamico': 'Psicodinámico'
+        };
+
+        // Reemplaza 'YOUR_API_KEY' con tu clave de API real
+        const API_KEY = 'AIzaSyCkkFMdW8C7IJ7uSgR4oKLvGuf1ajxDUk0';
+        const genAI = new GoogleGenerativeAI(API_KEY);
+
+        async function generateSessionContentWithGemini(sessionData) {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+
+    let prompt = `
+        Actúa como un especialista en intervención psicopedagógica.
+        El enfoque terapéutico es: ${therapeuticApproaches[sessionData.therapeuticApproach]}.
+        El nombre del estudiante es: ${sessionData.studentName}.
+        La carrera profesional del estudiante es: ${sessionData.studentColege}.
+        La edad del estudiante es: ${sessionData.studentAge}.
+        La fecha de la sesión es: ${sessionData.sessionDate}.
+        El número de sesión es: ${sessionData.sessionNumber}.
+    `;
+
+    if (sessionData.sessionNumber === '1') {
+        prompt += `
+            Indicadores diagnóstico: ${sessionData.initialIndicators}.
+            Con base en la información dada, genera una planificación de sesión psicopedagógica en formato JSON, con la siguiente estructura:
+            **Recuerda que todo diagnóstico debe basarse en el CIE 10.**
+            **El differentiatedDiagnosis se va describir siempre en pasado**
+            **sessionObjective se va describir siempre en un párrafo largo y sin enumerar los objetivos**
+            **sessionObjective tiene que tener relación con la primera sesión que correspode a evaluación y diagnóstico**
+            {
+                "studentData": {
+                    "studentName": "...",
+                    "studentColege": "...",
+                    "sessionDate": "...",
+                    "studentAge": "...",
+                    "sessionNumber": "...",
+                    "therapeuticApproach": "..."
+                },
+                "diagnosis": {
+                    "differentiatedDiagnosis": "...",
+                    "presumptiveDiagnosis": "...",
+                    "presumptiveDiagnosisCode": "...",
+                    "presumptiveDiagnosisConcept": "..."
+                },
+                "indicators": {
+                    "found": [],
+                },
+                "sessionDevelopment": {
+                    "sessionObjective": "...",
+                    "evaluationTools": []
+                }
+            }
+        `;
+    } else if (sessionData.sessionNumber === '2') {
+        prompt += `
+            Diagnóstico presuntivo: ${sessionData.presumptiveDiagnosis}.
+            Con base en la información dada, genera una planificación de sesión psicopedagógica en formato JSON, con la siguiente estructura:
+            **onlineResources debe ser llenado con páginas de recursos didáctios para que el estudiante supre su situación**
+            **indications siempre se va a escribir em tiempo pasado.**
+            **indications no debe contener neuromitos, todas las indicaciones debe ser basado en la evidencia científica**
+            **indications requiere una mayor explicación de las acciones realizadas**
+            **En estimatedTime se debe considerar que toda la sesión dura como máximo 60 minutos** 
+            {
+              "studentData": {
+                    "studentName": "...",
+                    "studentColege": "...",
+                    "sessionDate": "...",
+                    "studentAge": "...",
+                    "sessionNumber": "...",
+                    "therapeuticApproach": "..."
+                },
+              "diagnosis": {
+                   "presumptiveDiagnosis": "...",
+                   "presumptiveDiagnosisCode": "...",
+                   "presumptiveDiagnosisConcept": "..."
+                },
+              "sessionDevelopment": {
+                    "sessionObjective": "...",
+                    "therapeuticApproach": "...",
+                    "interventionRoadmap": [
+                      {
+                        "activity": "...",
+                        "indications": "...",
+                        "estimatedTime": "..."
+                      }
+                    ],
+                  "onlineResources": [
+                      {
+                      "title": "...",
+                      "url": "..."
+                    }
+                  ]
+                }
+            }
+        `;
+    } else if (sessionData.sessionNumber === '3') {
+        prompt += `
+            Diagnóstico presuntivo: ${sessionData.presumptiveDiagnosis}.
+            Con base en la información dada, genera una planificación de sesión psicopedagógica en formato JSON, con la siguiente estructura:
+            **indications siempre se va a escribir em tiempo pasado.**
+            **sessionObjective tiene que tener relación con la tercera sesión, que correspode Cierre y Monitoreo**
+            {
+              "studentData": {
+                "studentName": "...",
+                "studentColege": "...",
+                "sessionDate": "...",
+                "studentAge": "...",
+                "sessionNumber": "...",
+                "therapeuticApproach": "..."
+              },
+              "sessionDevelopment": {
+                "sessionObjective": "...",
+                "therapeuticApproach": "...",
+                "evaluationAndMonitoringRoadmap": [
+                  {
+                    "activity": "...",
+                    "indications": "...",
+                    "estimatedTime": "..."
+                  }
+                ]
+              }
+            }
+        `;
+    }
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const textContent = response.text();
+        const jsonStartIndex = textContent.indexOf('{');
+        const jsonEndIndex = textContent.lastIndexOf('}') + 1;
+        if (jsonStartIndex === -1 || jsonEndIndex === 0) {
+            throw new Error("No se pudo encontrar una estructura JSON válida en la respuesta");
+        }
+        const jsonContent = textContent.substring(jsonStartIndex, jsonEndIndex);
+        return JSON.parse(jsonContent);
+    } catch (error) {
+        console.error("Error en la llamada a la API de Gemini:", error);
+        throw new Error(`Error al comunicarse con la API de Gemini: ${error.message}`);
+    }
+}
+
+
+        document.getElementById('sessionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const loadingElement = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+            const exportSection = document.getElementById('exportSection');
+
+             // Obtener datos del formulario
+             const therapeuticApproach = document.getElementById('therapeuticApproach').value;
+            const studentName = document.getElementById('studentName').value;
+            const studentAge = document.getElementById('studentAge').value;
+            const sessionDate = document.getElementById('sessionDate').value;
+            const sessionNumber = document.getElementById('sessionNumber').value;
+            const studentColege = document.getElementById('studentColege').value;
+            
+            // Datos específicos de la sesión
+            let initialIndicators = "";
+            let presumptiveDiagnosis = "";
+            if (sessionNumber === '1') {
+                initialIndicators = document.getElementById('initialIndicators').value;
+            } else if (sessionNumber === '2' || sessionNumber === '3') {
+                presumptiveDiagnosis = document.getElementById('presumptiveDiagnosis').value;
+            }
+
+            // Mostrar indicador de carga
+            loadingElement.style.display = 'flex';
+            resultContainer.innerHTML = '';
+
+            try {
+                // Generar contenido de la sesión con IA
+                const sessionContent = await generateSessionContentWithGemini({
+                    therapeuticApproach,
+                    studentName,
+                    studentAge,
+                    sessionDate,
+                    sessionNumber,
+                    initialIndicators,
+                    studentColege,
+                    presumptiveDiagnosis
+                });
+
+                // Mostrar resultados
+                resultContainer.innerHTML = generateSessionHTML(sessionContent, sessionNumber);
+                exportSection.style.display = 'block';
+                
+            } catch (error) {
+                console.error("Error al generar la sesión:", error);
+                resultContainer.innerHTML = `<p class="error">Error al generar la sesión: ${error.message}</p>`;
+            } finally {
+                loadingElement.style.display = 'none';
+            }
+        });
+
+        function generateSessionHTML(sessionContent, sessionNumber) {
+    let html = `
+        <div class="session-details">
+            <h2>Ficha de Intervención Psicopedagógica</h2>
+            
+            <h3>Datos del Estudiante</h3>
+            <table>
+                <tr>
+                    <th>Nombre del Estudiante</th>
+                    <td>${sessionContent.studentData.studentName}</td>
+                </tr>
+                <tr>
+                    <th>Carrera Profesional</th>
+                    <td>${sessionContent.studentData.studentColege}</td>
+                </tr>
+                <tr>
+                    <th>Fecha de la Sesión</th>
+                    <td>${sessionContent.studentData.sessionDate}</td>
+                </tr>
+                <tr>
+                    <th>Edad del Estudiante</th>
+                    <td>${sessionContent.studentData.studentAge}</td>
+                </tr>
+                <tr>
+                    <th>Número de Sesión</th>
+                    <td>${sessionContent.studentData.sessionNumber}</td>
+                </tr>
+                <tr>
+                    <th>Enfoque Terapéutico</th>
+                    <td>${sessionContent.studentData.therapeuticApproach}</td>
+                </tr>
+            </table>
+    `;
+
+    // Sección de diagnóstico
+    html += `<h3>Diagnóstico</h3>`;
+    if (sessionNumber === '1') {
+        html += `
+            <table>
+                <tr>
+                    <th>Diagnóstico Diferenciado</th>
+                    <td>${sessionContent.diagnosis.differentiatedDiagnosis}</td>
+                </tr>
+                <tr>
+                    <th>Diagnóstico Presuntivo</th>
+                    <td>${sessionContent.diagnosis.presumptiveDiagnosis}</td>
+                </tr>
+                <tr>
+                    <th>Codificación Presuntiva</th>
+                    <td>${sessionContent.diagnosis.presumptiveDiagnosisCode}</td>
+                </tr>
+                 <tr>
+                    <th>Concepto Presuntivo</th>
+                    <td>${sessionContent.diagnosis.presumptiveDiagnosisConcept}</td>
+                </tr>
+            </table>
+            <h3>Indicadores</h3>
+                <table>
+                    <tr>
+                        <th>Indicadores Encontrados</th>
+                        <td>
+                            <ul>
+                                ${sessionContent.indicators.found.map(ind => `<li>${ind}</li>`).join('')}
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+        `;
+    } else {
+        html += `
+            <table>
+                <tr>
+                    <th>Diagnóstico Presuntivo</th>
+                    <td>${sessionContent.diagnosis.presumptiveDiagnosis}</td>
+                </tr>
+                <tr>
+                    <th>Codificación Presuntiva</th>
+                    <td>${sessionContent.diagnosis.presumptiveDiagnosisCode}</td>
+                </tr>
+                <tr>
+                    <th>Concepto Presuntivo</th>
+                    <td>${sessionContent.diagnosis.presumptiveDiagnosisConcept}</td>
+                </tr>
+            </table>
+        `;
+}
+    // Sección de desarrollo de la sesión
+    html += `<h3>Desarrollo de la Sesión</h3>`;
+    if (sessionNumber === '1') {
+        html += `
+            <p><strong>Objetivo de la Sesión:</strong> ${sessionContent.sessionDevelopment.sessionObjective}</p>
+            <h4>Instrumentos considerados para la Evaluación</h4>
+            <ul>
+            ${sessionContent.sessionDevelopment.evaluationTools.map(tool => `<li>${tool}</li>`).join('')}
+            </ul>
+        `;
+    } else if (sessionNumber === '2') {
+        html += `
+            <p><strong>Objetivo de la Sesión:</strong> ${sessionContent.sessionDevelopment.sessionObjective}</p>
+            <p><strong>Enfoque Terapéutico:</strong> ${sessionContent.sessionDevelopment.therapeuticApproach}</p>
+            <div class="form-group">
+                <label>Acciones Realizadas:</label>
+                <textarea id="actionsTaken" placeholder="Describa las acciones realizadas durante la sesión"></textarea>
+            </div>
+            <h4>Hoja de Ruta para Intervención</h4>
+            <div class="session-activities">
+                ${sessionContent.sessionDevelopment.interventionRoadmap.map(activity => `
+                    <div class="activity">
+                        <h4>${activity.activity}</h4>
+                        <p><strong>Indicaciones:</strong> ${activity.indications}</p>
+                        <p><strong>Tiempo Estimado:</strong> ${activity.estimatedTime}</p>
+                    </div>
+                `).join('')}
+            </div>
+            <h4>Recursos en Línea</h4>
+              <ul>
+                ${sessionContent.sessionDevelopment.onlineResources.map(resource => `<li><a href="${resource.url}" target="_blank">${resource.title}</a></li>`).join('')}
+              </ul>
+        `;
+    } else if (sessionNumber === '3') {
+        html += `
+            <p><strong>Objetivo de la Sesión:</strong> ${sessionContent.sessionDevelopment.sessionObjective}</p>
+            <p><strong>Enfoque Terapéutico:</strong> ${sessionContent.sessionDevelopment.therapeuticApproach}</p>
+            <div class="form-group">
+                <label>Acciones Realizadas:</label>
+                <textarea id="actionsTaken" placeholder="Describa las acciones realizadas durante la sesión"></textarea>
+            </div>
+            <h4>Hoja de Ruta para Evaluación y Monitoreo</h4>
+            <div class="session-activities">
+                ${sessionContent.sessionDevelopment.evaluationAndMonitoringRoadmap.map(activity => `
+                    <div class="activity">
+                        <h4>${activity.activity}</h4>
+                        <p><strong>Indicaciones:</strong> ${activity.indications}</p>
+                        <p><strong>Tiempo Estimado:</strong> ${activity.estimatedTime}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    html+=`</div>`
+    return html;
+    }
+        // Evento para manejar inputs específicos según el número de sesión
+        document.getElementById('sessionNumber').addEventListener('change', function() {
+            const sessionSpecificInputs = document.getElementById('sessionSpecificInputs');
+            const sessionNumber = this.value;
+            
+            sessionSpecificInputs.innerHTML = '';
+            
+            if (sessionNumber === '1') {
+                sessionSpecificInputs.innerHTML = `
+                    <div class="form-group">
+                        <label>Indicadores Iniciales:</label>
+                        <textarea id="initialIndicators" placeholder="Describa los indicadores iniciales encontrados"></textarea>
+                    </div>
+                `;
+            } else if (sessionNumber === '2' || sessionNumber === '3') {
+                sessionSpecificInputs.innerHTML = `
+                    <div class="form-group">
+                        <label>Diagnóstico Presuntivo:</label>
+                        <input type="text" id="presumptiveDiagnosis" placeholder="Introduzca el diagnóstico presuntivo">
+                    </div>
+                `;
+            }
+        });
+
+        // Funciones de exportación (placeholder)
+        document.getElementById('exportPDFButton').addEventListener('click', () => {
+            alert('Funcionalidad de exportación a PDF próximamente');
+        });
+
+        document.getElementById('exportWordButton')?.addEventListener('click', () => {
+            alert('Funcionalidad de exportación a Word próximamente');
+        });
+    </script>
+</body>
+<footer>
+    <p>&copy; 2025 ResearchFlix - Todos los derechos reservados.</p>
+</footer>
+</html>
